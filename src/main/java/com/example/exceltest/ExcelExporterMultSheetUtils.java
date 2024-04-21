@@ -32,6 +32,7 @@ public class ExcelExporterMultSheetUtils {
         Map<String, Object> testMap = new HashMap<>();
         // 单值格式
         testMap.put("title", "" + "这是一个标题噢噢噢");
+        testMap.put("title2", "" + "这是第二个标题啊啊啊啊啊");
         testMap.put("signName", "张一三");
         testMap.put("age", 18);
         testMap.put("time", LocalDateTime.now());
