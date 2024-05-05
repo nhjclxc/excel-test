@@ -1,6 +1,7 @@
 package com.example.exceltest;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,10 +17,7 @@ import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author LuoXianchao
@@ -111,6 +109,33 @@ public class TestController {
         ExcelExporterMultSheetUtils.exportByTemplate(resourceAsStream, response.getOutputStream(), dataMap);
 
 
+    }
+    @GetMapping("test3")
+    public void test3(HttpServletResponse response) throws Exception {
+
+        // 数据
+        List<TestDistrict> testDistrictList = new ArrayList<>();
+        testDistrictList.add(TestDistrict.builder().name("中国").level(0).time(LocalDateTime.now()).build());
+        testDistrictList.add(TestDistrict.builder().name("浙江省").level(1).time(LocalDateTime.now()).build());
+        testDistrictList.add(TestDistrict.builder().name("宁波市").level(2).time(LocalDateTime.now()).build());
+        testDistrictList.add(TestDistrict.builder().name("江北区").level(3).time(LocalDateTime.now()).build());
+        testDistrictList.add(TestDistrict.builder().name("庄市大道").level(4).time(LocalDateTime.now()).build());
+
+        // 属性与列名对应
+        // 注意：这里必须使用LinkedHashMap来确保导出的excel的列有序，
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("level", "级别");
+        map.put("name", "名称");
+        map.put("time", "时间");
+
+//        Workbook export = export(testDistrictList, map, TestDistrict.class);
+        Workbook export = ExcelExportCommonUtils.export("导出的表格", 2, 0, "导出的标题", testDistrictList, map, TestDistrict.class);
+
+
+        setResponse(response, System.currentTimeMillis() + "输出excel.xlsx");
+        ServletOutputStream outputStream = response.getOutputStream();
+        export.write(outputStream);
+        export.close();
     }
 
 
