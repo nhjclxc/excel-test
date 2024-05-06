@@ -1,22 +1,20 @@
 package com.example.exceltest;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 
 /**
@@ -114,22 +112,29 @@ public class TestController {
     public void test3(HttpServletResponse response) throws Exception {
 
         // 数据
-        List<TestDistrict> testDistrictList = new ArrayList<>();
-        testDistrictList.add(TestDistrict.builder().name("中国").level(0).time(LocalDateTime.now()).build());
-        testDistrictList.add(TestDistrict.builder().name("浙江省").level(1).time(LocalDateTime.now()).build());
-        testDistrictList.add(TestDistrict.builder().name("宁波市").level(2).time(LocalDateTime.now()).build());
-        testDistrictList.add(TestDistrict.builder().name("江北区").level(3).time(LocalDateTime.now()).build());
-        testDistrictList.add(TestDistrict.builder().name("庄市大道").level(4).time(LocalDateTime.now()).build());
+        List<TestObject> testObjectList = new ArrayList<>();
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).aBoolean(true).build());
 
         // 属性与列名对应
         // 注意：这里必须使用LinkedHashMap来确保导出的excel的列有序，
         Map<String, String> map = new LinkedHashMap<>();
-        map.put("level", "级别");
-        map.put("name", "名称");
-        map.put("time", "时间");
+        map.put("localDateTime", "localDateTime数据");
+        map.put("localDate", "localDate数据");
+        map.put("localTime", "localTime数据");
+        map.put("date", "date数据");
+        map.put("string", "string数据");
+        map.put("integer", "integer数据");
+        map.put("aFloat", "aFloat数据");
+        map.put("aDouble", "aDouble数据");
+        map.put("aLong", "aLong数据");
+        map.put("aBoolean", "aBoolean数据");
 
 //        Workbook export = export(testDistrictList, map, TestDistrict.class);
-        Workbook export = ExcelExportCommonUtils.export("导出的表格", 2, 0, "导出的标题", testDistrictList, map, TestDistrict.class);
+        Workbook export = ExcelUtils.export("导出的表格", 2, 0, "导出的标题", testObjectList, map, TestDistrict.class);
 
 
         setResponse(response, System.currentTimeMillis() + "输出excel.xlsx");

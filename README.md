@@ -17,4 +17,7 @@ excel模板导出练习
 ### sheet2结果
 ![./img_3.png](img_3.png)
 
+### 支持列表数据的导出导入，该工具类的请看[ExcelUtils.java](src%2Fmain%2Fjava%2Fcom%2Fexample%2Fexceltest%2FExcelUtils.java)
+![./img_4.png](img_4.png)
+
 ## Author：[LuoXianchao]()
