@@ -355,9 +355,16 @@ public class ExcelUtils {
      */
     private static String getFieldValue(Class<?> clazz, String attribute, Object obj) {
         try {
-            Field field = clazz.getDeclaredField(attribute);
+            // 获取attribute对应的字段
+            Field field = getField(clazz, attribute);
+            if (field == null){
+                throw new NoSuchFieldException("No Such Field Exception !");
+            }
             field.setAccessible(true);
             Object o = field.get(obj);
+            if (null == o){
+                return "";
+            }
             Class<?> type = field.getType();
             // 对时间进行格式化
             if (LocalDateTime.class.isAssignableFrom(type)){
@@ -377,6 +384,24 @@ public class ExcelUtils {
         }
         return "";
     }
+
+    /**
+     * 获取实体类属性，包含继承的属性
+     */
+    private static <T> Field getField(Class<T> bean, String attribute) throws NoSuchFieldException, IllegalAccessException {
+        Class<?> clazz = bean;
+        for (; clazz != Object.class; clazz = clazz.getSuperclass()) {//向上循环  遍历父类
+            Field[] field = clazz.getDeclaredFields();
+            for (Field f : field) {
+                f.setAccessible(true);
+                if (f.getName().equals(attribute)) {
+                    return f;
+                }
+            }
+        }
+        return null;
+    }
+
 
     /**
      * 往对象的对应属性上设值
