@@ -1,5 +1,8 @@
 package com.example.exceltest;
 
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.multipart.MultipartFile;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -18,9 +21,12 @@ import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 
@@ -91,9 +97,9 @@ public class ExcelUtils {
     /**
      * 判断文件是否合法
      */
-    public static boolean validateExcel(String filename) {
+    public static void validateExcel(String filename) {
         if (filename != null && !"".equals(filename) && (isExcel2003(filename) || isExcel2007(filename))){
-            return true;
+            return;
         }
         throw new RuntimeException("文件名不合法，文件不是[*.xlsx]或[*.xls]");
     }
@@ -116,6 +122,7 @@ public class ExcelUtils {
 
         return doImportExcel(sheetIndex, startRowIndex, startColumnIndex, inputStream, excel2003, attributeList, clazz);
     }
+
     public static <T> List<T> importExcel(MultipartFile file, int sheetIndex, int startRowIndex, int startColumnIndex,
                                           List<String> attributeList, Class<T> clazz) throws IOException {
         String filename = file.getOriginalFilename();
@@ -237,8 +244,8 @@ public class ExcelUtils {
 
         sheet.createFreezePane(freezePaneCol, freezePaneRow);
 
-        CellStyle whiteStyle = initCellStyle(workbook, IndexedColors.WHITE);
-        CellStyle aquaStyle = initCellStyle(workbook, IndexedColors.AQUA);
+        CellStyle whiteStyle = initDefaultCellStyle(workbook, IndexedColors.WHITE);
+        CellStyle aquaStyle = initDefaultCellStyle(workbook, IndexedColors.AQUA);
 
         int rowIndex = 0;
         if (title != null && !"".equals(title)) {
@@ -290,7 +297,7 @@ public class ExcelUtils {
     /**
      * 初始化单元格样式
      */
-    private static CellStyle initCellStyle(Workbook workbook, IndexedColors colors) {
+    private static CellStyle initDefaultCellStyle(Workbook workbook, IndexedColors colors) {
         CellStyle style = workbook.createCellStyle();
         // 创建边框样式 居中对齐样式等单元格默认样式
         style.setWrapText(false); // 是否自动换行
@@ -309,6 +316,36 @@ public class ExcelUtils {
         style.setFillForegroundColor(colors.getIndex());
         return style;
     }
+
+    public static CellStyle initDefaultCellStyle(Workbook workbook) {
+        // 创建边框样式 居中对齐样式
+        CellStyle commonStyle = workbook.createCellStyle();
+        commonStyle.setBorderBottom(BorderStyle.THIN);
+        commonStyle.setBorderTop(BorderStyle.THIN);
+        commonStyle.setBorderRight(BorderStyle.THIN);
+        commonStyle.setBorderLeft(BorderStyle.THIN);
+        commonStyle.setAlignment(HorizontalAlignment.CENTER);
+        commonStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        return commonStyle;
+    }
+
+    /**
+     * 合并单元格，同时给合并后的单元格创建默认样式
+     */
+    private static void mergeCell(Sheet sheet, CellStyle commonStyle, int firstRow, int lastRow, int firstCol, int lastCol) {
+        sheet.addMergedRegion(new CellRangeAddress(firstRow, lastRow, firstCol, lastCol));
+        for (int i = firstRow; i <= lastRow; i++) {
+            Row row = sheet.getRow(i);
+            for (int j = firstCol; j <= lastCol; j++) {
+                Cell cell = row.getCell(j);
+                if (null == cell) {
+                    cell = row.createCell(j);
+                    cell.setCellStyle(commonStyle);
+                }
+            }
+        }
+    }
+
 
     /**
      * 填充单元格数据
@@ -341,8 +378,7 @@ public class ExcelUtils {
                     cellValue = String.valueOf(cell.getBooleanCellValue());
                     break;
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) { }
         return cellValue;
     }
 
@@ -368,13 +404,13 @@ public class ExcelUtils {
             Class<?> type = field.getType();
             // 对时间进行格式化
             if (LocalDateTime.class.isAssignableFrom(type)){
-                return DateTimeFormatterUtils.LocalDateTimeFormatter.print((LocalDateTime) o, null);
+                return DateTimeFormatterUtils.LocalDateTimeFormatter.print((LocalDateTime) o);
             } else if (LocalDate.class.isAssignableFrom(type)){
-                return DateTimeFormatterUtils.LocalDateFormatter.print((LocalDate) o, null);
+                return DateTimeFormatterUtils.LocalDateFormatter.print((LocalDate) o);
             } else if (LocalTime.class.isAssignableFrom(type)){
-                return DateTimeFormatterUtils.LocalTimeFormatter.print((LocalTime) o, null);
+                return DateTimeFormatterUtils.LocalTimeFormatter.print((LocalTime) o);
             } else if (Date.class.isAssignableFrom(type)){
-                return DateTimeFormatterUtils.DateTimeFormatterCustom.print((Date) o, null);
+                return DateTimeFormatterUtils.DateTimeFormatterCustom.print((Date) o);
             } else{
                 return o.toString();
             }
@@ -420,13 +456,13 @@ public class ExcelUtils {
             Class<?> type = field.getType();
             // 对时间进行格式化
             if (LocalDateTime.class.isAssignableFrom(type)){
-                value = DateTimeFormatterUtils.LocalDateTimeFormatter.parse((String) value, null);
+                value = DateTimeFormatterUtils.LocalDateTimeFormatter.parse((String) value);
             } else if (LocalDate.class.isAssignableFrom(type)){
-                value = DateTimeFormatterUtils.LocalDateFormatter.parse((String) value, null);
+                value = DateTimeFormatterUtils.LocalDateFormatter.parse((String) value);
             } else if (LocalTime.class.isAssignableFrom(type)){
-                value = DateTimeFormatterUtils.LocalTimeFormatter.parse((String) value, null);
+                value = DateTimeFormatterUtils.LocalTimeFormatter.parse((String) value);
             } else if (Date.class.isAssignableFrom(type)){
-                value = DateTimeFormatterUtils.DateTimeFormatterCustom.parse((String) value, null);
+                value = DateTimeFormatterUtils.DateTimeFormatterCustom.parse((String) value);
             } else if (Integer.class.isAssignableFrom(type)){
                 value = Integer.parseInt(value+"");
             } else if (Float.class.isAssignableFrom(type)){
@@ -464,9 +500,69 @@ public class ExcelUtils {
     }
 
     public static void setResponse(HttpServletResponse response, String fileName) throws IOException {
-        response.addHeader("Access-Control-Allow-Origin", "*");
-        response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()));
+        response.reset();
+        response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "*");
+        response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "*");
+        response.addHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()));
         response.setContentType("application/octet-stream; charset=UTF-8");
     }
+
+    static class DateTimeFormatterUtils {
+
+        public static class LocalDateTimeFormatter {
+            private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            public static LocalDateTime parse(String text) {
+                return LocalDateTime.parse(text, dateTimeFormatter);
+            }
+            public static String print(LocalDateTime object) {
+                return dateTimeFormatter.format(object);
+            }
+        }
+
+        public static class LocalDateFormatter {
+            private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            public static LocalDate parse(String text) {
+                return LocalDate.parse(text, dateFormatter);
+            }
+            public static String print(LocalDate object) {
+                return dateFormatter.format(object);
+            }
+        }
+
+        public static class LocalTimeFormatter {
+            private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+            public static LocalTime parse(String text) {
+                return LocalTime.parse(text, timeFormatter);
+            }
+            public static String print(LocalTime object) {
+                return timeFormatter.format(object);
+            }
+        }
+
+        public static class DateFormatter {
+            private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            public static Date parse(String text) throws ParseException {
+                return dateFormat.parse(text);
+            }
+            public static String print(Date date) {
+                return dateFormat.format(date);
+            }
+        }
+
+        public static class DateTimeFormatterCustom {
+            private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            public static Date parse(String text) {
+                try {
+                    return dateFormat.parse(text);
+                } catch (ParseException ignored) { }
+                return null;
+            }
+            public static String print(Date date) {
+                return dateFormat.format(date);
+            }
+        }
+    }
+
 }
