@@ -147,7 +147,7 @@ public class ExcelUtils {
      * @return 解析得到的数据
      * @author 罗贤超
      */
-    public static <T> List<T> doImportExcel(int sheetIndex, int startRowIndex, int startColumnIndex,
+    private static <T> List<T> doImportExcel(int sheetIndex, int startRowIndex, int startColumnIndex,
                                                            InputStream inputStream, boolean excel2003,
                                                            List<String> attributeList, Class<T> clazz) throws IOException {
         // 创建Workbook
@@ -393,9 +393,6 @@ public class ExcelUtils {
         try {
             // 获取attribute对应的字段
             Field field = getField(clazz, attribute);
-            if (field == null){
-                throw new NoSuchFieldException("No Such Field Exception !");
-            }
             field.setAccessible(true);
             Object o = field.get(obj);
             if (null == o){
@@ -424,7 +421,7 @@ public class ExcelUtils {
     /**
      * 获取实体类属性，包含继承的属性
      */
-    private static <T> Field getField(Class<T> bean, String attribute) throws NoSuchFieldException, IllegalAccessException {
+    private static <T> Field getField(Class<T> bean, String attribute) throws NoSuchFieldException {
         Class<?> clazz = bean;
         for (; clazz != Object.class; clazz = clazz.getSuperclass()) {//向上循环  遍历父类
             Field[] field = clazz.getDeclaredFields();
@@ -435,7 +432,7 @@ public class ExcelUtils {
                 }
             }
         }
-        return null;
+        throw new NoSuchFieldException("No Such Field Exception !");
     }
 
 
@@ -449,7 +446,7 @@ public class ExcelUtils {
      */
     private static <T> void setFieldValue(Class<T> clazz, Object obj, String attribute, Object value) {
         try {
-            Field field = clazz.getDeclaredField(attribute); // 获取attribute对应的字段
+            Field field = getField(clazz, attribute);// 获取attribute对应的字段
             field.setAccessible(true); // 允许访问私有属性
 //            field.set(obj, value); // 设置属性值
 
@@ -509,7 +506,7 @@ public class ExcelUtils {
         response.setContentType("application/octet-stream; charset=UTF-8");
     }
 
-    static class DateTimeFormatterUtils {
+    private static class DateTimeFormatterUtils {
 
         public static class LocalDateTimeFormatter {
             private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
