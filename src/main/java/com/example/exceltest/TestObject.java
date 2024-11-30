@@ -27,4 +27,5 @@ public class TestObject {
     Long aLong;
     BigDecimal bigDecimal;
     Boolean aBoolean;
+    String imageUrl;
 }

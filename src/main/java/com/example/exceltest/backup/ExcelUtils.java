@@ -1,8 +1,8 @@
-package com.example.exceltest;
+package com.example.exceltest.backup;
 
-//import cn.hutool.http.HttpRequest;
-//import cn.hutool.http.HttpResponse;
-import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
+import com.example.exceltest.TestObject;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.multipart.MultipartFile;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -13,16 +13,12 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -33,16 +29,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 
-/**
- * excel表格数据
- * @date 2024-11-30：新增导出Excel最后一列添加图片的功能
- * @author 罗贤超
- */
 public class ExcelUtils {
 
     protected static final Logger log = LoggerFactory.getLogger(ExcelUtils.class);
@@ -53,11 +41,11 @@ public class ExcelUtils {
 
         // 数据
         List<TestObject> testObjectList = new ArrayList<>();
-        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=1684950961,555061934&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms0.baidu.com/it/u=1163903759,2895241531&fm=253&app=138&f=JPEG?w=800&h=1066").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=4198565569,2274601556&fm=253&app=138&f=JPEG?w=513&h=500").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=962926323,2652095159&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=3123971159,81579136&fm=253&app=138&f=JPEG?w=500&h=620").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
+        testObjectList.add(TestObject.builder().localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
 
         // 属性与列名对应
         // 注意：这里必须使用LinkedHashMap来确保导出的excel的列有序，
@@ -73,11 +61,9 @@ public class ExcelUtils {
         map.put("aLong", "aLong数据");
         map.put("bigDecimal", "bigDecimal数据");
         map.put("aBoolean", "aBoolean数据");
-        map.put("imageUrl", "图片链接");
 
-
-        Workbook workbook = ExcelUtils.exportByImage("导出的表格", 2, 0, "导出的标题",
-                testObjectList, map, TestObject.class, false, "imageUrl", 255, 255);
+        Workbook export = export(testObjectList, map, TestObject.class);
+        Workbook workbook = export("导出的表格", 2, 0, "导出的标题", testObjectList, map, TestObject.class);
 
         FileOutputStream fileOutputStream = new FileOutputStream(outputPath);
         workbook.write(fileOutputStream);
@@ -112,9 +98,9 @@ public class ExcelUtils {
     /**
      * 判断文件是否合法
      */
-    public static boolean validateExcel(String filename) {
+    public static void validateExcel(String filename) {
         if (filename != null && !"".equals(filename) && (isExcel2003(filename) || isExcel2007(filename))){
-            return true;
+            return;
         }
         throw new RuntimeException("文件名不合法，文件不是[*.xlsx]或[*.xls]");
     }
@@ -137,6 +123,7 @@ public class ExcelUtils {
 
         return doImportExcel(sheetIndex, startRowIndex, startColumnIndex, inputStream, excel2003, attributeList, clazz);
     }
+
     public static <T> List<T> importExcel(MultipartFile file, int sheetIndex, int startRowIndex, int startColumnIndex,
                                           List<String> attributeList, Class<T> clazz) throws IOException {
         String filename = file.getOriginalFilename();
@@ -175,7 +162,6 @@ public class ExcelUtils {
 //        Iterator<Row> rowIterator = sheet.iterator();
 //        for (int rowIndex = 0; rowIterator.hasNext(); rowIndex++) {
 //            Row row = rowIterator.next();
-        int attributeListSize = attributeList.size();
         for (Row row : sheet) {
             int rowIndex = row.getRowNum();
             if (rowIndex < startRowIndex) {
@@ -183,14 +169,11 @@ public class ExcelUtils {
             }
 
             Object obj = createObject(clazz);
-
             for (Cell cell : row) {
                 int columnIndex = cell.getColumnIndex();
                 if (columnIndex < startColumnIndex) {
                     continue;
                 }
-                if (columnIndex >= attributeListSize)
-                    break;
                 String cellValue = getCellValue(cell);
                 String attribute = attributeList.get(columnIndex);
                 setFieldValue(clazz, obj, attribute, cellValue);
@@ -208,25 +191,25 @@ public class ExcelUtils {
     }
 
 
-    public static <T> Workbook export(List<T> dataList, Map<String, String> attributeMap, Class<T> clazz, boolean rowAlternatelyStyle) {
-        return export(null, 1, 0, null, dataList, attributeMap, clazz, rowAlternatelyStyle);
+    public static <T> Workbook export(List<T> dataList, Map<String, String> attributeMap, Class<T> clazz) {
+        return export(null, 1, 0, null, dataList, attributeMap, clazz);
     }
 
-    public static <T> Workbook export(String sheetname, String title, List<T> dataList, Map<String, String> attributeMap, Class<T> clazz, boolean rowAlternatelyStyle) {
-        return export(sheetname, 0, 0, title, dataList, attributeMap, clazz, rowAlternatelyStyle);
+    public static <T> Workbook export(String sheetname, String title, List<T> dataList, Map<String, String> attributeMap, Class<T> clazz) {
+        return export(sheetname, 0, 0, title, dataList, attributeMap, clazz);
     }
 
     public static Workbook export(String sheetname, int freezePaneRow, int freezePaneCol,
-                                  String title, List<?> dataList, Map<String, String> attributeMap, Class<?> clazz, boolean rowAlternatelyStyle) {
+                                  String title, List<?> dataList, Map<String, String> attributeMap, Class<?> clazz) {
         sheetname = sheetname == null || "".equals(sheetname) ? "sheet1" : sheetname;
         freezePaneRow = (title != null && !"".equals(title)) ? 2 : 1;
         freezePaneCol = 0;
 
-        return export(-1, sheetname, freezePaneRow, freezePaneCol, title, dataList, attributeMap, clazz, rowAlternatelyStyle);
+        return export(-1, sheetname, freezePaneRow, freezePaneCol, title, dataList, attributeMap, clazz);
     }
 
     public static Workbook export(int rowAccessWindowSize, String sheetname, int freezePaneRow, int freezePaneCol,
-                                  String title, List<?> dataList, Map<String, String> attributeMap, Class<?> clazz, boolean rowAlternatelyStyle) {
+                                  String title, List<?> dataList, Map<String, String> attributeMap, Class<?> clazz) {
        /*
         HSSFWorkbook、XSSFWorkbook、SXSSFWorkbook的区别:
          ◎HSSFWorkbook一般用于Excel2003版及更早版本(扩展名为.xls)的导出。上限65535行、256列
@@ -236,7 +219,7 @@ public class ExcelUtils {
 //      rowAccessWindowSize 显示行上限：-1表示显示所有行，大于0的数据则表示显示设置的函数
         Workbook workbook = new SXSSFWorkbook(rowAccessWindowSize);
         Sheet sheet = workbook.createSheet(sheetname);
-        return export(workbook, sheet, freezePaneRow, freezePaneCol, title, dataList, attributeMap, clazz, rowAlternatelyStyle, null, null, -1, -1);
+        return export(workbook, sheet, freezePaneRow, freezePaneCol, title, dataList, attributeMap, clazz);
     }
 
 
@@ -253,10 +236,8 @@ public class ExcelUtils {
      * @return .
      * @author 罗贤超
      */
-    public static Workbook export(Workbook workbook, Sheet sheet, int freezePaneRow, int freezePaneCol, String title,
-                                  List<?> dataList, Map<String, String> attributeMap, Class<?> clazz, boolean rowAlternatelyStyle,
-                                  String imageUrlAttribute, Map<String, InputStream> inputStreamMap,
-                                  int imageHeight, int imageWidth) {
+    public static Workbook export(Workbook workbook, Sheet sheet, int freezePaneRow, int freezePaneCol,
+                                  String title, List<?> dataList, Map<String, String> attributeMap, Class<?> clazz) {
 
         // 禁用POI的日志输出
 //        Logger.getLogger("org.apache.poi").setLevel(Level.OFF);
@@ -264,8 +245,8 @@ public class ExcelUtils {
 
         sheet.createFreezePane(freezePaneCol, freezePaneRow);
 
-        CellStyle whiteStyle = initCellStyle(workbook, IndexedColors.WHITE);
-        CellStyle aquaStyle = initCellStyle(workbook, IndexedColors.AQUA);
+        CellStyle whiteStyle = initDefaultCellStyle(workbook, IndexedColors.WHITE);
+        CellStyle aquaStyle = initDefaultCellStyle(workbook, IndexedColors.AQUA);
 
         int rowIndex = 0;
         if (title != null && !"".equals(title)) {
@@ -289,40 +270,19 @@ public class ExcelUtils {
             headerCell.setCellStyle(whiteStyle);
         }
 
-        boolean hasImage = null != imageUrlAttribute && !"".equals(imageUrlAttribute) && null != inputStreamMap;
-
-        //生成用于插入图片的容器--这个方法返回的类型在老api中不同
-        Drawing<?> drawingPatriarch = null;
-        if (hasImage){
-            drawingPatriarch = sheet.createDrawingPatriarch();
-        }
-
         // 填充每一行的数据
         for (int i = 0; i < dataList.size(); i++) {
-            int currentRowIndex = rowIndex + i;
-            Row row = sheet.createRow(currentRowIndex);
+            Row row = sheet.createRow(rowIndex + i);
             Object obj = dataList.get(i);
 
             // 填充每一个单元格的数据
             int columnIndex = -1;
             for (String attribute : attributeMap.keySet()) {
                 // 交替相邻两行的背景颜色
-                CellStyle style = rowAlternatelyStyle ? (currentRowIndex % 2 == 0 ? aquaStyle : whiteStyle) : whiteStyle;
+                CellStyle style = (rowIndex + i) % 2 == 0 ? aquaStyle : whiteStyle;
+
                 String fieldValue = getFieldValue(clazz, attribute, obj);
                 fillCell(style, row, ++columnIndex, fieldValue);
-            }
-
-            // 最后一列添加图片数据
-            if (hasImage) {
-                row.setHeightInPoints(imageHeight);
-                String imageUrl = ExcelUtils.getFieldValue(clazz, imageUrlAttribute, dataList.get(i));
-                if (inputStreamMap.containsKey(imageUrl)) {
-                    InputStream inputStream = inputStreamMap.get(imageUrl);
-                    createPicture(inputStream, workbook, drawingPatriarch,
-                            0, 0, (int) (imageWidth * 0.75), (int) (imageHeight * 0.45),
-                            columnIndex + 1, currentRowIndex,
-                            columnIndex + 1 + 3, currentRowIndex + 1);
-                }
             }
         }
 
@@ -336,161 +296,9 @@ public class ExcelUtils {
     }
 
     /**
-     * 在Excel最后一列插入图片
-     *
-     * @param imageUrlAttribute 图片地址属性
-     * @param imageHeight 图片高度
-     * @param imageWidth 图片宽度
-     * @author 罗贤超
-     */
-    public static Workbook exportByImage(String sheetname, int freezePaneRow, int freezePaneCol, String title,
-                                         List<?> dataList, Map<String, String> attributeMap, Class<?> clazz,
-                                         boolean rowAlternatelyStyle, String imageUrlAttribute,
-                                         int imageHeight, int imageWidth) {
-
-        // 先异步下载所有图片数据
-        Map<String, InputStream> inputStreamMap = new HashMap<>();
-        CountDownLatch latch = new CountDownLatch(dataList.size());
-
-        int threadCount = 4; // 设置线程数
-        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-
-        for (Object o : dataList) {
-            String imageUrl = ExcelUtils.getFieldValue(clazz, imageUrlAttribute, o);
-            executorService.submit(() -> {
-                try {
-                    // 判断某个链接指向的数据是否以及存在，存在则不下载，反之则去下载图片数据
-                    if (!inputStreamMap.containsKey(imageUrl)) {
-                        InputStream inputStream = doDownloadData(imageUrl);
-                        if (inputStream != null) {
-//                            System.out.println(imageUrl);
-                            inputStreamMap.putIfAbsent(imageUrl, inputStream);
-                        }
-                    }
-                } catch (IOException ignored) {
-                } finally {
-                    latch.countDown(); // 完成一个任务，latch减1
-                }
-            });
-        }
-        try { latch.await(); } catch (InterruptedException ignored) { }
-        executorService.shutdown();
-
-        // 接着再去写表格
-        Workbook workbook = new SXSSFWorkbook(-1);
-        Sheet sheet = workbook.createSheet(sheetname);
-        export(workbook, sheet, freezePaneRow, freezePaneCol, title, dataList, attributeMap, clazz, rowAlternatelyStyle,
-                imageUrlAttribute, inputStreamMap, imageHeight, imageWidth);
-
-        return workbook;
-    }
-
-
-
-    /**
-     * 将inputStream对应的图片数据插入以下指定位置
-     *
-     * @param inputStream 图片流数据
-     * @param workbook 工作簿
-     * @param drawingPatriarch 工作簿画图对象
-     * @param dx1 起始单元格内的x偏移（0-1023）
-     * @param dy1 起始单元格内的y偏移（0-255）
-     * @param dx2 终止单元格内的x偏移（0-1023）
-     * @param dy2 终止单元格内的y偏移（0-255）
-     * @param col1 起始列，表示图片的左上角所在的起始列索引（从 0 开始计数）。
-     * @param row1 起始行，表示图片的左上角所在的起始行索引（从 0 开始计数）。
-     * @param col2 终止列，表示图片的右下角所在的终止列索引（从 0 开始计数）。
-     * @param row2 终止行，表示图片的右下角所在的终止行索引（从 0 开始计数）。
-     * @author 罗贤超
-     */
-    public static void createPicture(InputStream inputStream, Workbook workbook, Drawing<?> drawingPatriarch,
-                                     int dx1, int dy1, int dx2, int dy2, int col1, int row1, int col2, int row2) {
-//        row.setHeightInPoints(255); // 设置某行的高度
-//        final Drawing<?> drawingPatriarch = sheet.createDrawingPatriarch(); // 获取画图对象
-//        XSSFClientAnchor anchor = new XSSFClientAnchor(
-//                100, 50,       // dx1, dy1: 起始偏移
-//                200, 100,      // dx2, dy2: 终止偏移
-//                1, 1,          // col1, row1: 起始列和行（索引从 0 开始）
-//                3, 2           // col2, row2: 终止列和行
-//        );
-        if (null == drawingPatriarch) {
-            return;
-        }
-
-        try {
-            ByteArrayOutputStream byteArrayOut = new ByteArrayOutputStream();
-            BufferedImage img = ImageIO.read(inputStream);
-            ImageIO.write(img, "jpg", byteArrayOut);
-            //设置每张图片插入位置
-            final XSSFClientAnchor anchor = new XSSFClientAnchor(dx1, dy1, dx2, dy2, col1, row1, col2, row2);
-            anchor.setAnchorType(ClientAnchor.AnchorType.MOVE_AND_RESIZE);
-            // 插入图片
-            drawingPatriarch.createPicture(anchor, workbook.addPicture(byteArrayOut.toByteArray(), HSSFWorkbook.PICTURE_TYPE_JPEG));
-            byteArrayOut.close();
-        } catch (IOException ignored) {
-        }
-    }
-
-
-    /**
-     * 根据urlList下载图片数据
-     *
-     * @param urlList 所有图片数据链接
-     * @author 罗贤超
-     */
-    public static Map<String, InputStream> downloadData(List<String> urlList) throws InterruptedException {
-//        List<String> urlList = Arrays.asList("http://example.com/file1", "http://example.com/file2"); // 示例URL列表
-//        Map<String, InputStream> stringInputStreamMap = ExcelUtils.downloadData(urls);
-
-        int threadCount = 4; // 设置线程数
-
-        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(urlList.size());
-
-        Map<String, InputStream> inputStreamMap = new HashMap<>();
-        urlList.forEach(url -> executorService.submit(() -> {
-            try {
-                InputStream inputStream = doDownloadData(url);
-                if (inputStream != null) {
-                    inputStreamMap.put(url, inputStream);
-                }
-            } catch (IOException ignored) {
-            } finally {
-                latch.countDown(); // 完成一个任务，latch减1
-            }
-        }));
-
-        latch.await(); // 等待所有任务完成
-        executorService.shutdown();
-        System.out.println("所有文件下载完成");
-        return inputStreamMap;
-    }
-
-    public static InputStream doDownloadData(String imageUrl) throws IOException {
-//            HttpResponse response = HttpRequest.get(imageUrl).execute();
-//            if (response.bodyStream().available() > 0) {
-//                return response.bodyStream();
-//            }
-        if (null == imageUrl || "".equals(imageUrl)) {
-            return null;
-        }
-        URL url = new URL(imageUrl);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-        connection.connect();
-        // 获取输入流
-        InputStream inputStream = connection.getInputStream();
-//        if (connection.getResponseCode() != HttpURLConnection.HTTP_OK || inputStream.available() <= 0) {
-        if (inputStream.available() <= 0) {
-            return null;
-        }
-        return inputStream;
-    }
-
-    /**
      * 初始化单元格样式
      */
-    public static CellStyle initCellStyle(Workbook workbook, IndexedColors colors) {
+    private static CellStyle initDefaultCellStyle(Workbook workbook, IndexedColors colors) {
         CellStyle style = workbook.createCellStyle();
         // 创建边框样式 居中对齐样式等单元格默认样式
         style.setWrapText(false); // 是否自动换行
@@ -509,6 +317,36 @@ public class ExcelUtils {
         style.setFillForegroundColor(colors.getIndex());
         return style;
     }
+
+    public static CellStyle initDefaultCellStyle(Workbook workbook) {
+        // 创建边框样式 居中对齐样式
+        CellStyle commonStyle = workbook.createCellStyle();
+        commonStyle.setBorderBottom(BorderStyle.THIN);
+        commonStyle.setBorderTop(BorderStyle.THIN);
+        commonStyle.setBorderRight(BorderStyle.THIN);
+        commonStyle.setBorderLeft(BorderStyle.THIN);
+        commonStyle.setAlignment(HorizontalAlignment.CENTER);
+        commonStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        return commonStyle;
+    }
+
+    /**
+     * 合并单元格，同时给合并后的单元格创建默认样式
+     */
+    private static void mergeCell(Sheet sheet, CellStyle commonStyle, int firstRow, int lastRow, int firstCol, int lastCol) {
+        sheet.addMergedRegion(new CellRangeAddress(firstRow, lastRow, firstCol, lastCol));
+        for (int i = firstRow; i <= lastRow; i++) {
+            Row row = sheet.getRow(i);
+            for (int j = firstCol; j <= lastCol; j++) {
+                Cell cell = row.getCell(j);
+                if (null == cell) {
+                    cell = row.createCell(j);
+                    cell.setCellStyle(commonStyle);
+                }
+            }
+        }
+    }
+
 
     /**
      * 填充单元格数据
@@ -541,8 +379,7 @@ public class ExcelUtils {
                     cellValue = String.valueOf(cell.getBooleanCellValue());
                     break;
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) { }
         return cellValue;
     }
 
@@ -553,12 +390,10 @@ public class ExcelUtils {
      * @param attribute 属性名称
      * @param obj       对象
      */
-    public static String getFieldValue(Class<?> clazz, String attribute, Object obj) {
+    private static String getFieldValue(Class<?> clazz, String attribute, Object obj) {
         try {
-
             // 获取attribute对应的字段
             Field field = getField(clazz, attribute);
-//            Field field = clazz.getDeclaredField(attribute);
             field.setAccessible(true);
             Object o = field.get(obj);
             if (null == o){
@@ -585,6 +420,24 @@ public class ExcelUtils {
     }
 
     /**
+     * 获取实体类属性，包含继承的属性
+     */
+    private static <T> Field getField(Class<T> bean, String attribute) throws NoSuchFieldException {
+        Class<?> clazz = bean;
+        for (; clazz != Object.class; clazz = clazz.getSuperclass()) {//向上循环  遍历父类
+            Field[] field = clazz.getDeclaredFields();
+            for (Field f : field) {
+                f.setAccessible(true);
+                if (f.getName().equals(attribute)) {
+                    return f;
+                }
+            }
+        }
+        throw new NoSuchFieldException("No Such Field Exception !");
+    }
+
+
+    /**
      * 往对象的对应属性上设值
      *
      * @param clazz     泛型
@@ -594,11 +447,7 @@ public class ExcelUtils {
      */
     private static <T> void setFieldValue(Class<T> clazz, Object obj, String attribute, Object value) {
         try {
-            if (value == null || "".equals(value)){
-                return;
-            }
-            // 获取attribute对应的字段
-            Field field = getField(clazz, attribute);
+            Field field = getField(clazz, attribute);// 获取attribute对应的字段
             field.setAccessible(true); // 允许访问私有属性
 //            field.set(obj, value); // 设置属性值
 
@@ -632,23 +481,6 @@ public class ExcelUtils {
     }
 
     /**
-     * 获取实体类属性，包含继承的属性
-     */
-    private static <T> Field getField(Class<T> bean, String attribute) throws NoSuchFieldException, IllegalAccessException {
-        Class<?> clazz = bean;
-        for (; clazz != Object.class; clazz = clazz.getSuperclass()) {//向上循环  遍历父类
-            Field[] field = clazz.getDeclaredFields();
-            for (Field f : field) {
-                f.setAccessible(true);
-                if (f.getName().equals(attribute)) {
-                    return f;
-                }
-            }
-        }
-        throw new NoSuchFieldException("No Such Field Exception !");
-    }
-
-    /**
      * 创建泛型对应的对象
      *  注意：泛型对象必须包含无参构造函数和全参构造函数，可以使用Lombok的两个注解来创建：@NoArgsConstructor和@AllArgsConstructor
      *
@@ -665,23 +497,7 @@ public class ExcelUtils {
         }
     }
 
-    public static CellStyle initDefaultCellStyle(Workbook workbook) {
-        // 创建边框样式 居中对齐样式
-        CellStyle commonStyle = workbook.createCellStyle();
-        commonStyle.setBorderBottom(BorderStyle.THIN);
-        commonStyle.setBorderTop(BorderStyle.THIN);
-        commonStyle.setBorderRight(BorderStyle.THIN);
-        commonStyle.setBorderLeft(BorderStyle.THIN);
-        commonStyle.setAlignment(HorizontalAlignment.CENTER);
-        commonStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-        return commonStyle;
-    }
-
     public static void setResponse(HttpServletResponse response, String fileName) throws IOException {
-//        response.addHeader("Access-Control-Allow-Origin", "*");
-//        response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
-//        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()));
-//        response.setContentType("application/octet-stream; charset=UTF-8");
         response.reset();
         response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
         response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "*");
@@ -695,31 +511,50 @@ public class ExcelUtils {
 
         public static class LocalDateTimeFormatter {
             private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            public static LocalDateTime parse(String text) {  return LocalDateTime.parse(text, dateTimeFormatter);  }
-            public static String print(LocalDateTime object) {  return dateTimeFormatter.format(object); }
+            public static LocalDateTime parse(String text) {
+                return LocalDateTime.parse(text, dateTimeFormatter);
+            }
+            public static String print(LocalDateTime object) {
+                return dateTimeFormatter.format(object);
+            }
         }
+
         public static class LocalDateFormatter {
             private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            public static LocalDate parse(String text) {  return LocalDate.parse(text, dateFormatter);  }
-            public static String print(LocalDate object) {  return dateFormatter.format(object);  }
+            public static LocalDate parse(String text) {
+                return LocalDate.parse(text, dateFormatter);
+            }
+            public static String print(LocalDate object) {
+                return dateFormatter.format(object);
+            }
         }
+
         public static class LocalTimeFormatter {
             private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-            public static LocalTime parse(String text) {  return LocalTime.parse(text, timeFormatter);  }
-            public static String print(LocalTime object) {  return timeFormatter.format(object);  }
+            public static LocalTime parse(String text) {
+                return LocalTime.parse(text, timeFormatter);
+            }
+            public static String print(LocalTime object) {
+                return timeFormatter.format(object);
+            }
         }
 
         public static class DateFormatter {
             private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            public static Date parse(String text) throws ParseException {  return dateFormat.parse(text);  }
-            public static String print(Date date) {  return dateFormat.format(date);  }
+            public static Date parse(String text) throws ParseException {
+                return dateFormat.parse(text);
+            }
+            public static String print(Date date) {
+                return dateFormat.format(date);
+            }
         }
+
         public static class DateTimeFormatterCustom {
             private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            public static Date parse(String text){
+            public static Date parse(String text) {
                 try {
                     return dateFormat.parse(text);
-                } catch (ParseException ignored) {}
+                } catch (ParseException ignored) { }
                 return null;
             }
             public static String print(Date date) {
