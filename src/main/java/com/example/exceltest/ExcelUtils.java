@@ -77,7 +77,7 @@ public class ExcelUtils {
 
 
         Workbook workbook = ExcelUtils.exportByImage("导出的表格", 2, 0, "导出的标题",
-                testObjectList, map, TestObject.class, false, "imageUrl", 255, 255);
+                testObjectList, map, TestObject.class, false, "imageUrl", 128, 64);
 
         FileOutputStream fileOutputStream = new FileOutputStream(outputPath);
         workbook.write(fileOutputStream);
@@ -295,6 +295,8 @@ public class ExcelUtils {
         Drawing<?> drawingPatriarch = null;
         if (hasImage){
             drawingPatriarch = sheet.createDrawingPatriarch();
+            // 设置图片一列的列宽
+            sheet.setColumnWidth(attributeMap.size() + 1, imageWidth * 50);
         }
 
         // 填充每一行的数据
@@ -314,14 +316,17 @@ public class ExcelUtils {
 
             // 最后一列添加图片数据
             if (hasImage) {
+                fillCell(whiteStyle, row, ++columnIndex, "");
+                // 设置图片行高
                 row.setHeightInPoints(imageHeight);
+
                 String imageUrl = ExcelUtils.getFieldValue(clazz, imageUrlAttribute, dataList.get(i));
                 if (inputStreamMap.containsKey(imageUrl)) {
                     InputStream inputStream = inputStreamMap.get(imageUrl);
                     createPicture(inputStream, workbook, drawingPatriarch,
-                            0, 0, (int) (imageWidth * 0.75), (int) (imageHeight * 0.45),
-                            columnIndex + 1, currentRowIndex,
-                            columnIndex + 1 + 3, currentRowIndex + 1);
+                            0, 0, 1023, 255,
+                            columnIndex, currentRowIndex,
+                            columnIndex + 1, currentRowIndex + 1);
                 }
             }
         }
