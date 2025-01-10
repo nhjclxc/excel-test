@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.MemoryImageSource;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -24,6 +26,8 @@ import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.ParseException;
@@ -33,9 +37,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
 
 
 /**
@@ -46,51 +52,6 @@ import java.util.concurrent.Executors;
 public class ExcelUtils {
 
     protected static final Logger log = LoggerFactory.getLogger(ExcelUtils.class);
-
-    public static void main(String[] args) throws Exception {
-        // 输出文件路径
-        String outputPath = "ExcelUtils-test" + ".xlsx";
-
-        // 数据
-        List<TestObject> testObjectList = new ArrayList<>();
-        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=1684950961,555061934&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms0.baidu.com/it/u=1163903759,2895241531&fm=253&app=138&f=JPEG?w=800&h=1066").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=4198565569,2274601556&fm=253&app=138&f=JPEG?w=513&h=500").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=962926323,2652095159&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=3123971159,81579136&fm=253&app=138&f=JPEG?w=500&h=620").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-
-        // 属性与列名对应
-        // 注意：这里必须使用LinkedHashMap来确保导出的excel的列有序，
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put("localDateTime", "localDateTime数据");
-        map.put("localDate", "localDate数据");
-        map.put("localTime", "localTime数据");
-        map.put("date", "date数据");
-        map.put("string", "string数据");
-        map.put("integer", "integer数据");
-        map.put("aFloat", "aFloat数据");
-        map.put("aDouble", "aDouble数据");
-        map.put("aLong", "aLong数据");
-        map.put("bigDecimal", "bigDecimal数据");
-        map.put("aBoolean", "aBoolean数据");
-        map.put("imageUrl", "图片链接");
-
-
-        Workbook workbook = ExcelUtils.exportByImage("导出的表格", 2, 0, "导出的标题",
-                testObjectList, map, TestObject.class, false, "imageUrl", 128, 64);
-
-        FileOutputStream fileOutputStream = new FileOutputStream(outputPath);
-        workbook.write(fileOutputStream);
-        workbook.close();
-
-        List<String> attributeList = new ArrayList<>(map.keySet());
-//        List<String> attributeList = Arrays.asList("localDateTime", "localDate", "localTime", "date", "string", "integer", "aFloat", "aDouble", "aLong", "bigDecimal", "aBoolean");
-        // 测试导入
-        List<TestObject> testObjects = importExcel(new File(outputPath), attributeList, TestObject.class);
-        System.out.println(testObjects);
-    }
-
-
 
     private ExcelUtils() { }
 
@@ -167,6 +128,9 @@ public class ExcelUtils {
         // 创建Workbook
         Workbook workbook = excel2003 ? new HSSFWorkbook(inputStream) : new XSSFWorkbook(inputStream);
 
+        // 获取excel里面保存的二级制图片数据（）注意：当前只支持读取图片数据
+        List<? extends PictureData> pictureList = workbook.getAllPictures();
+
         // 获取Sheet
         Sheet sheet = workbook.getSheetAt(sheetIndex);
 
@@ -193,6 +157,12 @@ public class ExcelUtils {
                     break;
                 String cellValue = getCellValue(cell);
                 String attribute = attributeList.get(columnIndex);
+
+                if (setBinaryData(clazz, obj, attribute, pictureList, rowIndex - startRowIndex)) {
+                    // 如果是二级制数据那么文本数据就不要设置文本数据了
+                    continue;
+                }
+
                 setFieldValue(clazz, obj, attribute, cellValue);
             }
             // 将obj强制转换为Class<T>类型的对象
@@ -205,6 +175,144 @@ public class ExcelUtils {
 
         // 数据预处理 。。。
         return dataList;
+    }
+
+
+    /**
+     * 设置单元格的二级制数据到对象里面
+     * <br>
+     * <b>注意：此操作目前仅支持一行对应一个图片数据的情况</b>
+     */
+    private static <T> boolean setBinaryData(Class<T> clazz, Object obj, String attribute,
+                                             List<? extends PictureData> pictureList, int rowIndex) {
+
+        if (null == pictureList || pictureList.size() == 0 || rowIndex >= pictureList.size()) {
+            return false;
+        }
+
+        try {
+            // 获取attribute对应的字段
+            Field field = getField(clazz, attribute);
+            field.setAccessible(true); // 允许访问私有属性
+
+            Class<?> fieldType = field.getType();
+
+            // 判断当前这个属性是不是图片数据，是图片数据才去获取图片数据
+            //  如何变量名称是base64如何读取??? 如imgBase64，是否应该把图片数据也放进去呢？
+            if (!(isBinaryData(fieldType) || (attribute != null && attribute.toLowerCase().contains("BASE64".toLowerCase())) ) ) {
+                return false;
+            }
+
+            // 去读取
+            PictureData picture = pictureList.get(rowIndex);
+            // 获取图片的字节数据
+            byte[] data = picture.getData();
+//            String ext = picture.suggestFileExtension();  // 确定图片格式
+
+            // 数据格式转化
+            if ( attribute != null && attribute.toLowerCase().contains("BASE64".toLowerCase()) ) {
+                // 0、base64字符串，不包含前缀
+                String base64 = Base64.getEncoder().encodeToString(data);
+                field.set(obj, base64);
+            } else if (fieldType.isArray() && fieldType.getComponentType() == byte.class) {
+                // 1、byte[]
+                field.set(obj, data);
+            } else if (fieldType.isArray() && fieldType.getComponentType() == Byte.class) {
+                // 2、Byte[]
+                // 使用 Stream 将 byte[] 转换为 Byte[]
+                Byte[] byteWrapperArray = IntStream.range(0, data.length)
+                        .mapToObj(i -> data[i])  // 自动装箱
+                        .toArray(Byte[]::new);
+                field.set(obj, byteWrapperArray);
+            } else if (File.class.isAssignableFrom(fieldType)) {
+                // 3、File
+                // 获取系统临时目录
+                File tempFile = createTempFile();
+                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                    fos.write(data);
+                }
+                // 可选：自动删除临时文件（在JVM退出时删除）
+//                tempFile.deleteOnExit();
+                field.set(obj, tempFile);
+            } else if (InputStream.class.isAssignableFrom(fieldType) || ByteArrayInputStream.class.isAssignableFrom(fieldType)) {
+                // 4、InputStream 5、ByteArrayInputStream
+                field.set(obj, new ByteArrayInputStream(data));
+            } else if (Image.class.isAssignableFrom(fieldType)) {
+                // 6、Image
+                Image image = Toolkit.getDefaultToolkit().createImage(data);
+                field.set(obj, image);
+            } else if (BufferedImage.class.isAssignableFrom(fieldType)) {
+                // 6、BufferedImage
+                BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
+                field.set(obj, bufferedImage);
+            } else if (MemoryImageSource.class.isAssignableFrom(fieldType)) {
+                // 6、MemoryImageSource
+
+                // 将字节数组转为 BufferedImage
+                BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
+
+                if (bufferedImage != null) {
+                    // 获取图片的宽高
+                    int width = bufferedImage.getWidth();
+                    int height = bufferedImage.getHeight();
+
+                    // 这里假设每个像素是4字节（RGBA格式），根据需要调整
+                    int[] pixels = new int[width * height];
+                    for (int i = 0; i < data.length; i++) {
+                        // 简化处理，您需要根据实际的图像格式来解码数据
+                        pixels[i] = data[i] & 0xFF;
+                    }
+                    MemoryImageSource memoryImageSource = new MemoryImageSource(width, height, pixels, 0, width);
+                    field.set(obj, memoryImageSource);
+                }
+            } else if (ByteBuffer.class.isAssignableFrom(fieldType) || FileChannel.class.isAssignableFrom(fieldType)) {
+                File tempFile = createTempFile();
+
+                try (FileOutputStream fos = new FileOutputStream(tempFile);
+                    FileChannel fileChannel = fos.getChannel()) {
+                    ByteBuffer buffer = ByteBuffer.wrap(data);
+                    fileChannel.write(buffer);
+                    field.set(obj, ByteBuffer.class.isAssignableFrom(fieldType) ? buffer : fileChannel);
+                }
+                // 转化为内存的FileOutputStream后，临时文件删除
+                tempFile.deleteOnExit();
+            } else {
+                return false;
+            }
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 创建临时文件
+     */
+    private static File createTempFile() throws IOException {
+        // 获取系统临时目录
+        String tempDir = System.getProperty("java.io.tmpdir");
+        // 创建临时文件
+        return File.createTempFile("tempFile_" + UUID.randomUUID().toString().replaceAll("-", ""), ".txt", new File(tempDir));
+    }
+
+
+    /**
+     * 判断是否为二级制数据
+     */
+    public static boolean isBinaryData(Class<?> fieldType) {
+        return  isArrayOfByte(fieldType)
+                || File.class.isAssignableFrom(fieldType) || InputStream.class.isAssignableFrom(fieldType) || ByteArrayInputStream.class.isAssignableFrom(fieldType)
+                || Image.class.isAssignableFrom(fieldType) || BufferedImage.class.isAssignableFrom(fieldType) || MemoryImageSource.class.isAssignableFrom(fieldType)
+                || ByteBuffer.class.isAssignableFrom(fieldType) || FileChannel.class.isAssignableFrom(fieldType);
+    }
+
+    /**
+     * 判断是否为字节数组
+     */
+    public static boolean isArrayOfByte(Class<?> fieldType) {
+        // byte[].class.isAssignableFrom(type) || Byte[].class.isAssignableFrom(type)
+        return fieldType.isArray() && (fieldType.getComponentType() == byte.class || fieldType.getComponentType() == Byte.class);
     }
 
 
@@ -423,9 +531,12 @@ public class ExcelUtils {
         }
 
         try {
+            if (inputStream.available() <= 0) {
+                return;
+            }
+
             ByteArrayOutputStream byteArrayOut = new ByteArrayOutputStream();
-            BufferedImage img = ImageIO.read(inputStream);
-            ImageIO.write(img, "jpg", byteArrayOut);
+            ImageIO.write(ImageIO.read(inputStream), "jpg", byteArrayOut);
             //设置每张图片插入位置
             final XSSFClientAnchor anchor = new XSSFClientAnchor(dx1, dy1, dx2, dy2, col1, row1, col2, row2);
             anchor.setAnchorType(ClientAnchor.AnchorType.MOVE_AND_RESIZE);
@@ -731,6 +842,72 @@ public class ExcelUtils {
                 return dateFormat.format(date);
             }
         }
+    }
+
+
+    public static void main(String[] args) throws Exception {
+
+        testImport();
+
+//        testExport();
+
+    }
+
+    private static void testImport() throws IOException {
+
+        File file = new File("C:\\Users\\nhjcl\\Downloads\\人员考勤记录详细导出列表 (9).xlsx");
+
+        List<String> attributeList = Arrays.asList("string", "base64");
+
+        List<TestObject> testObjectList = importExcel(file, attributeList, TestObject.class);
+
+        for (TestObject testObject : testObjectList) {
+            System.out.println(testObject);
+        }
+
+    }
+
+    private static void testExport() throws IOException {
+        // 输出文件路径
+        String outputPath = "ExcelUtils-test" + ".xlsx";
+
+        // 数据
+        List<TestObject> testObjectList = new ArrayList<>();
+        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=1684950961,555061934&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().imageUrl("http://mms0.baidu.com/it/u=1163903759,2895241531&fm=253&app=138&f=JPEG?w=800&h=1066").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=4198565569,2274601556&fm=253&app=138&f=JPEG?w=513&h=500").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
+        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=962926323,2652095159&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
+        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=3123971159,81579136&fm=253&app=138&f=JPEG?w=500&h=620").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+
+        // 属性与列名对应
+        // 注意：这里必须使用LinkedHashMap来确保导出的excel的列有序，
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("localDateTime", "localDateTime数据");
+        map.put("localDate", "localDate数据");
+        map.put("localTime", "localTime数据");
+        map.put("date", "date数据");
+        map.put("string", "string数据");
+        map.put("integer", "integer数据");
+        map.put("aFloat", "aFloat数据");
+        map.put("aDouble", "aDouble数据");
+        map.put("aLong", "aLong数据");
+        map.put("bigDecimal", "bigDecimal数据");
+        map.put("aBoolean", "aBoolean数据");
+        map.put("imageUrl", "图片链接");
+
+
+        Workbook workbook = ExcelUtils.exportByImage("导出的表格", 2, 0, "导出的标题",
+                testObjectList, map, TestObject.class, false, "imageUrl", 128, 64);
+
+        FileOutputStream fileOutputStream = new FileOutputStream(outputPath);
+        workbook.write(fileOutputStream);
+        workbook.close();
+
+        List<String> attributeList = new ArrayList<>(map.keySet());
+//        List<String> attributeList = Arrays.asList("localDateTime", "localDate", "localTime", "date", "string", "integer", "aFloat", "aDouble", "aLong", "bigDecimal", "aBoolean");
+        // 测试导入
+        List<TestObject> testObjects = importExcel(new File(outputPath), attributeList, TestObject.class);
+        System.out.println(testObjects);
     }
 
 }

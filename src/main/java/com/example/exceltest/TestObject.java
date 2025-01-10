@@ -28,4 +28,6 @@ public class TestObject {
     BigDecimal bigDecimal;
     Boolean aBoolean;
     String imageUrl;
+    String base64;
+//    byte[] bytes;
 }
