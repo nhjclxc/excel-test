@@ -30,17 +30,19 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 
@@ -807,43 +809,115 @@ public class ExcelUtils {
         response.setContentType("application/octet-stream; charset=UTF-8");
     }
 
+
     private static class DateTimeFormatterUtils {
+        // Text '45690.71575231481' could not be parsed at index 0
+        private final static Pattern LOCAL_DATE_PATTERN = Pattern.compile("Text '([\\d.]+)' could not be parsed");
+        // Unparseable date: "45690.71575231481"
+        private final static Pattern DATE_PATTERN = Pattern.compile("Unparseable date: '([\\d.]+)'");
 
         public static class LocalDateTimeFormatter {
             private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            public static LocalDateTime parse(String text) {  return LocalDateTime.parse(text, dateTimeFormatter);  }
+            public static LocalDateTime parse(String text) {
+                LocalDateTime parse;
+                try {
+                    parse = LocalDateTime.parse(text, dateTimeFormatter);
+                } catch (Exception e) {
+                    // 使用正则提取单引号中的数字
+                    Matcher matcher = LOCAL_DATE_PATTERN.matcher(e.getMessage());
+
+                    if (!matcher.find()) {
+                        throw new RuntimeException(e);
+                    }
+                    Date date = DateUtil.getJavaDate(Double.parseDouble(text)); // 转为 java.util.Date
+                    parse = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+                }
+                return parse;
+            }
             public static String print(LocalDateTime object) {  return dateTimeFormatter.format(object); }
         }
         public static class LocalDateFormatter {
             private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            public static LocalDate parse(String text) {  return LocalDate.parse(text, dateFormatter);  }
+            public static LocalDate parse(String text) {
+                LocalDate parse;
+                try {
+                    parse = LocalDate.parse(text, dateFormatter);
+                } catch (Exception e) {
+
+                    // 使用正则提取单引号中的数字
+                    Matcher matcher = LOCAL_DATE_PATTERN.matcher(e.getMessage());
+
+                    if (!matcher.find()) {
+                        throw new RuntimeException(e);
+                    }
+                    Date date = DateUtil.getJavaDate(Double.parseDouble(text)); // 转为 java.util.Date
+                    parse = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                }
+                return parse;
+            }
             public static String print(LocalDate object) {  return dateFormatter.format(object);  }
         }
         public static class LocalTimeFormatter {
             private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-            public static LocalTime parse(String text) {  return LocalTime.parse(text, timeFormatter);  }
+            public static LocalTime parse(String text) {
+                LocalTime parse;
+                try {
+                    parse = LocalTime.parse(text, timeFormatter);
+                } catch (Exception e) {
+                    // 使用正则提取单引号中的数字
+                    Matcher matcher = LOCAL_DATE_PATTERN.matcher(e.getMessage());
+                    if (!matcher.find()) {
+                        throw new RuntimeException(e);
+                    }
+                    Date date = DateUtil.getJavaDate(Double.parseDouble(text)); // 转为 java.util.Date
+                    parse = date.toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
+                }
+                return parse;
+            }
             public static String print(LocalTime object) {  return timeFormatter.format(object);  }
         }
 
         public static class DateFormatter {
             private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            public static Date parse(String text) throws ParseException {  return dateFormat.parse(text);  }
+            public static Date parse(String text) {
+                Date date;
+                try {
+                    date = dateFormat.parse(text);
+                } catch (Exception e) {
+                    // 使用正则提取单引号中的数字
+                    Matcher matcher = DATE_PATTERN.matcher(e.getMessage());
+
+                    if (!matcher.find()) {
+                        throw new RuntimeException(e);
+                    }
+                    date = DateUtil.getJavaDate(Double.parseDouble(text)); // 转为 java.util.Date
+                }
+                return date;
+            }
             public static String print(Date date) {  return dateFormat.format(date);  }
         }
         public static class DateTimeFormatterCustom {
             private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             public static Date parse(String text){
+                Date date;
                 try {
-                    return dateFormat.parse(text);
-                } catch (ParseException ignored) {}
-                return null;
+                    date = dateFormat.parse(text);
+                } catch (Exception e) {
+                    // 使用正则提取单引号中的数字
+                    Matcher matcher = DATE_PATTERN.matcher(e.getMessage());
+
+                    if (!matcher.find()) {
+                        throw new RuntimeException(e);
+                    }
+                    date = DateUtil.getJavaDate(Double.parseDouble(text)); // 转为 java.util.Date
+                }
+                return date;
             }
             public static String print(Date date) {
                 return dateFormat.format(date);
             }
         }
     }
-
 
     public static void main(String[] args) throws Exception {
 
