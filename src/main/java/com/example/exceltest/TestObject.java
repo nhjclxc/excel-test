@@ -29,5 +29,6 @@ public class TestObject {
     Boolean aBoolean;
     String imageUrl;
     String base64;
+    String phoneNumber;
 //    byte[] bytes;
 }

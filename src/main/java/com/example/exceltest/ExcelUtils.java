@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -637,6 +638,10 @@ public class ExcelUtils {
         cell1.setCellValue(value);
     }
 
+
+    /** excel纯数字读取为字符串格式化 */
+    private static final DecimalFormat numberFormat = new DecimalFormat("#");
+
     /**
      * 获取单元格数据
      */
@@ -646,7 +651,7 @@ public class ExcelUtils {
             CellType cellType = cell.getCellType();
             switch (cellType) {
                 case NUMERIC:
-                    cellValue = String.valueOf(cell.getNumericCellValue());
+                    cellValue = numberFormat.format(cell.getNumericCellValue());
                     break;
                 case STRING:
                     cellValue = String.valueOf(cell.getStringCellValue());
@@ -742,6 +747,8 @@ public class ExcelUtils {
                 value = Boolean.parseBoolean(value+"");
             } else if (BigDecimal.class.isAssignableFrom(type)){
                 value = new BigDecimal(value+"");
+            } else if (String.class.isAssignableFrom(type)){
+                value = value + "";
             }
             field.set(obj, value);
         } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -922,16 +929,32 @@ public class ExcelUtils {
     public static void main(String[] args) throws Exception {
 
         testImport();
-
 //        testExport();
 
     }
 
     private static void testImport() throws IOException {
 
-        File file = new File("C:\\Users\\nhjcl\\Downloads\\人员考勤记录详细导出列表 (9).xlsx");
+        File file = new File("ExcelUtils-test.xlsx");
 
-        List<String> attributeList = Arrays.asList("string", "base64");
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("localDateTime", "localDateTime数据");
+        map.put("localDate", "localDate数据");
+        map.put("localTime", "localTime数据");
+        map.put("date", "date数据");
+        map.put("string", "string数据");
+        map.put("integer", "integer数据");
+        map.put("aFloat", "aFloat数据");
+        map.put("aDouble", "aDouble数据");
+        map.put("aLong", "aLong数据");
+        map.put("bigDecimal", "bigDecimal数据");
+        map.put("aBoolean", "aBoolean数据");
+        map.put("imageUrl", "图片链接");
+        map.put("phoneNumber", "手机号");
+
+        List<String> attributeList = new ArrayList<>(map.keySet());
+
+
 
         List<TestObject> testObjectList = importExcel(file, attributeList, TestObject.class);
 
@@ -947,11 +970,11 @@ public class ExcelUtils {
 
         // 数据
         List<TestObject> testObjectList = new ArrayList<>();
-        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=1684950961,555061934&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms0.baidu.com/it/u=1163903759,2895241531&fm=253&app=138&f=JPEG?w=800&h=1066").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms1.baidu.com/it/u=4198565569,2274601556&fm=253&app=138&f=JPEG?w=513&h=500").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=962926323,2652095159&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
-        testObjectList.add(TestObject.builder().imageUrl("http://mms2.baidu.com/it/u=3123971159,81579136&fm=253&app=138&f=JPEG?w=500&h=620").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().phoneNumber("19329651071").imageUrl("http://mms1.baidu.com/it/u=1684950961,555061934&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().phoneNumber("19329651072").imageUrl("http://mms0.baidu.com/it/u=1163903759,2895241531&fm=253&app=138&f=JPEG?w=800&h=1066").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
+        testObjectList.add(TestObject.builder().phoneNumber("19329651073").imageUrl("http://mms1.baidu.com/it/u=4198565569,2274601556&fm=253&app=138&f=JPEG?w=513&h=500").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
+        testObjectList.add(TestObject.builder().phoneNumber("19329651074").imageUrl("http://mms2.baidu.com/it/u=962926323,2652095159&fm=253&app=120&f=JPEG?w=800&h=800").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(false).build());
+        testObjectList.add(TestObject.builder().phoneNumber("19329651075").imageUrl("http://mms2.baidu.com/it/u=3123971159,81579136&fm=253&app=138&f=JPEG?w=500&h=620").localDateTime(LocalDateTime.now()).localDate(LocalDate.now()).localTime(LocalTime.now()).date(new Date()).string("String").integer(666).aFloat(2.5f).aDouble(22.33).aLong(888L).bigDecimal(new BigDecimal("666.888")).aBoolean(true).build());
 
         // 属性与列名对应
         // 注意：这里必须使用LinkedHashMap来确保导出的excel的列有序，
@@ -968,6 +991,7 @@ public class ExcelUtils {
         map.put("bigDecimal", "bigDecimal数据");
         map.put("aBoolean", "aBoolean数据");
         map.put("imageUrl", "图片链接");
+        map.put("phoneNumber", "手机号");
 
 
         Workbook workbook = ExcelUtils.exportByImage("导出的表格", 2, 0, "导出的标题",
